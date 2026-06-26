@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cobro Bus Sharif</title>
+    <!-- Enlace al Manifiesto -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007aff">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448339.png">
+    
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        :root { --primary: #007aff; --secondary: #34c759; --bg: #f2f2f7; --dark: #1c1c1e; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; width: 100%; max-width: 450px; padding: 20px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); box-sizing: border-box; }
+        h2 { margin: 0 0 15px 0; font-size: 16px; color: var(--dark); text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; color: #8e8e93; margin-bottom: 5px; font-weight: 600; }
+        input { width: 100%; padding: 12px; border: 1px solid #d1d1d6; border-radius: 12px; font-size: 18px; box-sizing: border-box; text-align: center; font-weight: bold; }
+        .grid-cant { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px; }
+        .btn-cant { background: #f2f2f7; border: 1px solid #d1d1d6; padding: 12px 0; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; color: var(--dark); }
+        .btn-cant.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .metodo-selector { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-metodo { flex: 1; padding: 12px; border: 2px solid #e5e5ea; border-radius: 15px; background: white; font-weight: bold; cursor: pointer; }
+        .btn-metodo.active { border-color: var(--primary); color: var(--primary); background: #f0f7ff; }
+        .total-box { background: var(--dark); color: white; padding: 15px; border-radius: 18px; text-align: center; margin-bottom: 10px; }
+        .total-val { font-size: 32px; font-weight: 800; display: block; color: var(--secondary); }
+        .check-container { display: flex; gap: 8px; margin-bottom: 20px; }
+        .btn-check { flex: 1; padding: 10px; font-size: 12px; font-weight: bold; border-radius: 10px; border: 1px solid #d1d1d6; cursor: pointer; background: #fff; color: #555; text-decoration: none; text-align: center; }
+        .qr-container { text-align: center; background: #fff; padding: 10px; border-radius: 15px; }
+        #qrcode { display: inline-block; padding: 10px; background: white; border-radius: 10px; }
+        .hint { font-size: 12px; color: #8e8e93; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Sistema de Cobro Bus</h2>
+    <div class="input-group">
+        <label>PRECIO DEL BILLETE (€)</label>
+        <input type="number" id="precio" value="1.50" step="0.05" oninput="calcular()">
+    </div>
+    <label>CANTIDAD DE TICKETS</label>
+    <div class="grid-cant">
+        <button class="btn-cant active" onclick="setCant(1, this)">1</button>
+        <button class="btn-cant" onclick="setCant(2, this)">2</button>
+        <button class="btn-cant" onclick="setCant(3, this)">3</button>
+        <button class="btn-cant" onclick="setCant(4, this)">4</button>
+        <button class="btn-cant" onclick="setCant(5, this)">5</button>
+        <button class="btn-cant" onclick="setCant(6, this)">6</button>
+        <button class="btn-cant" onclick="setCant(7, this)">7</button>
+        <button class="btn-cant" onclick="setCant(8, this)">8</button>
+        <button class="btn-cant" onclick="setCant(9, this)">9</button>
+        <button class="btn-cant" onclick="setCant(10, this)">10</button>
+    </div>
+    <div class="metodo-selector">
+        <button id="btnRev" class="btn-metodo active" onclick="setMetodo('revolut')">Revolut</button>
+        <button id="btnPay" class="btn-metodo" onclick="setMetodo('paypal')">PayPal</button>
+    </div>
+    <div class="total-box">
+        <span style="font-size: 11px; opacity: 0.7; font-weight: bold;">TOTAL</span>
+        <span class="total-val" id="displayTotal">1.50€</span>
+    </div>
+    <div class="check-container">
+        <a href="revolut://" class="btn-check">🔍 Ver Revolut</a>
+        <a href="paypal://" class="btn-check">🔍 Ver PayPal</a>
+    </div>
+    <div class="qr-container">
+        <div id="qrcode"></div>
+        <p class="hint" id="statusText">Escanea para pagar 1.50€</p>
+    </div>
+</div>
+
+<script>
+    // Registro del Service Worker para que sea instalable
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js');
+        });
+    }
+
+    const USUARIO_REVOLUT = "sharifmb"; 
+    const USUARIO_PAYPAL = "Sherrif86";   
+
+    let cantidadActual = 1;
+    let metodoActual = 'revolut';
+
+    function setCant(n, btn) {
+        cantidadActual = n;
+        document.querySelectorAll('.btn-cant').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        calcular();
+    }
+
+    function setMetodo(m) {
+        metodoActual = m;
+        document.getElementById('btnRev').classList.toggle('active', m === 'revolut');
+        document.getElementById('btnPay').classList.toggle('active', m === 'paypal');
+        calcular();
+    }
+
+    function calcular() {
+        const precio = document.getElementById('precio').value || 0;
+        const total = (precio * cantidadActual).toFixed(2);
+        document.getElementById('displayTotal').innerText = total + "€";
+        document.getElementById('statusText').innerText = "Escanea para pagar " + total + "€";
+        
+        let url = "";
+        if(metodoActual === "revolut") {
+            url = `https://revolut.me/${USUARIO_REVOLUT}/${total}`;
+        } else {
+            url = `https://www.paypal.me/${USUARIO_PAYPAL}/${total}EUR`;
+        }
+
+        const qrDiv = document.getElementById("qrcode");
+        qrDiv.innerHTML = "";
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        qrDiv.innerHTML = qr.createImgTag(6, 12);
+    }
+    window.onload = calcular;
+</script>
+</body>
+</html>
