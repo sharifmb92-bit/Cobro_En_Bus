@@ -1,0 +1,17 @@
+{
+  "name": "Cobro Bus Sharif",
+  "short_name": "CobroBus",
+  "description": "App auxiliar para cobro de billetes",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007aff",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3448/3448339.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
